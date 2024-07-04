@@ -1,0 +1,66 @@
+local lpr = game.Players.LocalPlayer
+local camera = game:GetService("Workspace").CurrentCamera
+local worldToViewportPoint = camera.WorldToViewportPoint
+
+_G.Teamcheck = false -- you can make this true if you want team check
+
+-- Function to generate rainbow colors
+local function rainbowColor(frequency)
+    local r = math.floor(math.sin(frequency + 0) * 127 + 128)
+    local g = math.floor(math.sin(frequency + 2) * 127 + 128)
+    local b = math.floor(math.sin(frequency + 4) * 127 + 128)
+    return Color3.fromRGB(r, g, b)
+end
+
+-- Table to hold the Drawing lines for each player
+local playerTracers = {}
+
+-- Update the tracers
+local function updateTracers()
+    local time = tick()
+    for i, v in pairs(game.Players:GetChildren()) do
+        if v ~= lpr and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            if _G.Teamcheck and v.Team == lpr.Team then
+                if playerTracers[v] then
+                    playerTracers[v].Visible = false
+                end
+            else
+                local rootPart = v.Character.HumanoidRootPart
+                local screenPos, onScreen = worldToViewportPoint(camera, rootPart.Position)
+                
+                if onScreen then
+                    local tracer = playerTracers[v]
+                    
+                    if not tracer then
+                        tracer = Drawing.new("Line")
+                        playerTracers[v] = tracer
+                    end
+                    
+                    tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+                    tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+                    tracer.Color = rainbowColor(time + v.UserId)
+                    tracer.Thickness = 2
+                    tracer.Transparency = 1
+                    tracer.Visible = true
+                else
+                    if playerTracers[v] then
+                        playerTracers[v].Visible = false
+                    end
+                end
+            end
+        elseif playerTracers[v] then
+            playerTracers[v].Visible = false
+        end
+    end
+end
+
+-- Update the tracers every frame
+game:GetService("RunService").RenderStepped:Connect(updateTracers)
+
+-- Clean up when a player leaves
+game.Players.PlayerRemoving:Connect(function(player)
+    if playerTracers[player] then
+        playerTracers[player]:Remove()
+        playerTracers[player] = nil
+    end
+end)
